@@ -1,0 +1,12 @@
+fastapi
+uvicorn[standard]
+gensim
+numpy
+pandas
+scikit-learn
+pydantic
+plotly
+nbformat
+scipy
+requests
+azure-functions
