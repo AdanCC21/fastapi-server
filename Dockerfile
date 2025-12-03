@@ -20,10 +20,10 @@ RUN python -c "import gensim.downloader as api; api.load('word2vec-google-news-3
 COPY . .
 
 # Expone el puerto (solo informativo, no fuerza el puerto)
-EXPOSE 8181
+EXPOSE 8000
 
 # 👇 Usa el puerto que Azure indique, o 8000 por defecto
-ENV PORT=8181
+ENV PORT=8000
 
 # Comando de inicio dinámico
-CMD ["/bin/bash", "-c", "uvicorn main:app --host 0.0.0.0 --port ${WEBSITES_PORT:-8000}"]
+CMD ["/bin/bash", "-c", "uvicorn main:app --host 0.0.0.0 --port 8000"]
