@@ -10,8 +10,6 @@ from sklearn.cluster import KMeans
 import logging
 from fastapi.middleware.cors import CORSMiddleware
 
-
-
 # Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -50,6 +48,8 @@ class GetAllWordsRequest(BaseModel):
     n_clusters: Optional[int] = 5  # Number of clusters for KMeans
     similarity_threshold: Optional[float] = 0.3  # Threshold for links
 
+class TextEmbeddingRequest(BaseModel):
+    text: str
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -245,6 +245,65 @@ async def get_all_words(request: GetAllWordsRequest):
 
     return {"nodes": nodes, "links": links}
     
+
+@app.post("/embed-text")
+async def embed_text(request: TextEmbeddingRequest):
+    """
+    Generate Word2Vec embeddings reduced to 3 dimensions
+    for each token in the input text, including [CLS] and [SEP].
+    """
+    if model is None:
+        raise HTTPException(status_code=503, detail="Word2Vec model is not loaded")
+
+    # Tokenize the text (simple split, can be replaced with regex tokenizer)
+    tokens = request.text.lower().split()
+
+    enriched_tokens = []
+    vectors = []
+
+    # Add CLS token (random small vector)
+    cls_vec = np.random.normal(scale=0.1, size=(300,))
+    enriched_tokens.append("[CLS]")
+    vectors.append(cls_vec)
+
+    # Add tokens
+    for tok in tokens:
+        if tok in model.key_to_index:
+            vec = model[tok]
+        else:
+            # OOV token -> small random vector
+            vec = np.random.normal(scale=0.1, size=(300,))
+        enriched_tokens.append(tok)
+        vectors.append(vec)
+
+    # Add SEP token
+    sep_vec = np.random.normal(scale=0.1, size=(300,))
+    enriched_tokens.append("[SEP]")
+    vectors.append(sep_vec)
+
+    # Convert to matrix
+    matrix = np.array(vectors)
+
+    # Reduce to 3D with PCA
+    try:
+        pca = PCA(n_components=3)
+        reduced = pca.fit_transform(matrix)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"PCA error: {str(e)}")
+
+    # Build result
+    token_entries = []
+    for i, tok in enumerate(enriched_tokens):
+        token_entries.append({
+            "token": tok,
+            "vector_3d": reduced[i].tolist()
+        })
+
+    return {
+        "text": request.text,
+        "tokens": token_entries
+    }
+
 
 # Configure CORDS
 app.add_middleware(
